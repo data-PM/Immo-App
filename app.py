@@ -30,9 +30,18 @@ st.set_page_config(
      layout="centered"
 )
 
+st.markdown("""
+        <style>
+               .block-container {
+                    padding-top: 0rem;
+                    padding-bottom: 0rem;
+                    padding-left: 0rem;
+                    padding-right: 0rem;
+                }
+        </style>
+        """, unsafe_allow_html=True)
+
 st.title("Évolution de l'immobilier à 1 an 🏡")
-
-
 
 
 commune = st.selectbox(label='Choisissez votre commune', options=st.session_state.liste_commune)
