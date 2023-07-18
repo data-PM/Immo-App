@@ -6,7 +6,7 @@ import pydeck as pdk
 
 
 if 'df' not in st.session_state:
-    st.session_state.df = pickle.load(open('App/liste_res.p', 'rb'))
+    st.session_state.df = pickle.load(open('liste_res.p', 'rb'))
     st.session_state.df.Appartement = st.session_state.df.Appartement.apply(lambda x: np.round(x*100, 2))
     st.session_state.df.Maison = st.session_state.df.Maison.apply(lambda x: np.round(x*100, 2))
     st.session_state.df.index = st.session_state.df.nom
@@ -21,7 +21,7 @@ if 'lat' not in st.session_state:
 
 
 
-APP_ICON_URL = "App/logo.png"
+APP_ICON_URL = "logo.png"
 
 # Setup web page
 st.set_page_config(
