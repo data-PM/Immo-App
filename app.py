@@ -2,22 +2,22 @@ import streamlit as st
 import pandas as pd
 import pickle
 import numpy as np
-import pydeck as pdk
+
+import geopandas as gpd
+import folium
+from folium.features import GeoJsonPopup, GeoJsonTooltip
+from streamlit_folium import st_folium
+import branca
 
 
-if 'df' not in st.session_state:
-    st.session_state.df = pickle.load(open('liste_res.p', 'rb'))
-    st.session_state.df.Appartement = st.session_state.df.Appartement.apply(lambda x: np.round(x*100, 2))
-    st.session_state.df.Maison = st.session_state.df.Maison.apply(lambda x: np.round(x*100, 2))
-    st.session_state.df.index = st.session_state.df.nom
-    st.session_state.liste_commune = [''] + sorted(st.session_state.df.nom.unique())
 
-if 'lat' not in st.session_state:
-    st.session_state.lat = 47.081012
-    st.session_state.lon = 2.398782
-    st.session_state.zoom = 5
-    st.session_state.max_range = float(st.session_state.df['Appartement'].max())
-    st.session_state.min_range = float(st.session_state.df['Appartement'].min())
+if 'liste_communes' not in st.session_state:
+    st.session_state.dict_communes = pickle.load(open('./App/liste_communes_dep.p', 'rb'))
+    st.session_state.liste_communes = [''] + sorted(st.session_state.dict_communes.keys())
+
+if 'map' not in st.session_state: 
+    frame = folium.Figure(width=700, height=500)
+    st.session_state.map = folium.Map(location=[47.081012, 2.398782], zoom_start=6, prefer_canvas=True).add_to(frame)
 
 
 
@@ -44,42 +44,62 @@ st.markdown("""
 st.title("Évolution de l'immobilier à 1 an 🏡")
 
 
-commune = st.selectbox(label='Choisissez votre commune', options=st.session_state.liste_commune)
+commune = st.selectbox(label='Choisissez votre commune', options=st.session_state.liste_communes)
 
-if commune != '':
-    appartement = st.session_state.df.loc[commune, 'Appartement']
-    maison = st.session_state.df.loc[commune, 'Maison']
-    st.session_state.lat = st.session_state.df.loc[commune, 'lat']
-    st.session_state.lon = st.session_state.df.loc[commune, 'lon']
-    st.session_state.zoom = 11
+if commune == '':
+    st_folium(st.session_state.map, width=700, height=500)
 
-st.pydeck_chart(pdk.Deck(
-    map_style='light',
-    initial_view_state=pdk.ViewState(
-        latitude=st.session_state.lat,
-        longitude=st.session_state.lon,
-        zoom=st.session_state.zoom,
-        pitch=50,
-    ),
-    layers=[
-        pdk.Layer(
-            'ColumnLayer',
-            data=st.session_state.df,
-            get_position='[lon, lat]',
-            get_elevation = 'Appartement',
-            radius=500,
-            elevation_scale=500,
-            get_fill_color='Appartement*10000',
-            auto_highlight=True,
-            pickable=True,
-            extruded=True,
-        ),
-    ],
-    tooltip = {
-        "html": "<b>{nom}</b><br>Appartement : <b>{Appartement} %</b><br>Maison : <b>{Maison} %</b>",
-        "style": {"background": "grey", "color": "white", "font-family": '"Helvetica Neue", Arial', "z-index": "10000"},
-    }
-))
+else:
+
+    communes = pickle.load(open('App/communes.p', 'rb'))
+    lat = communes[communes.nom==commune].iloc[0]['lat']
+    lon = communes[communes.nom==commune].iloc[0]['lon']
+
+    colormap = branca.colormap.LinearColormap(
+        vmin=-0.1,
+        vmax=0.1,
+        colors=["red", "orange", "lightblue", "green", "darkgreen"]
+    )
+
+    popup = GeoJsonPopup(
+        fields=["nom", "EVOL_12M"],
+        aliases=["Commune", "% Change"],
+        localize=True,
+        labels=True,
+        style="background-color: yellow;",
+    )
+
+    tooltip = GeoJsonTooltip(
+        fields=["nom", "EVOL_3M", "EVOL_6M", "EVOL_12M"],
+        aliases=["Commune", "3 mois", "6 mois", "12 mois"],
+        localize=True,
+        sticky=False,
+        labels=True,
+        style=("background-color: white; color: #333333; font-family: arial; font-size: 14px; padding: 10px;"),
+        max_width=800,
+    )
+
+    frame = folium.Figure(width=700, height=500)
+    map = folium.Map(location=[lat, lon], zoom_start=11, prefer_canvas=True).add_to(frame)
+
+    g = folium.GeoJson(
+        communes,
+        style_function=lambda x: {
+            "fillColor": colormap(x["properties"]["evol_12m"])
+            if x["properties"]["evol_12m"] is not None
+            else "transparent",
+            "color": "white",
+            "fillOpacity": 0.4,
+        },
+        tooltip=tooltip,
+        popup=popup,
+    ).add_to(map)
+
+    colormap.add_to(map)
+
+    st_folium(map, width=700, height=500)
+
+
 
 st.markdown('''
     <p><center><span style="font-size:16px">Powered by</span> <span style="font-size:20px"><strong><a href="https://dataltist.fr/" style="color:#C00000; text-decoration: none">Dataltist</a></strong></span>
