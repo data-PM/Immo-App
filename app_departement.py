@@ -3,7 +3,7 @@ import pandas as pd
 import pickle
 import numpy as np
 
-import geopandas as gpd
+# import geopandas as gpd
 import folium
 from folium.features import GeoJsonPopup, GeoJsonTooltip
 from streamlit_folium import st_folium
@@ -12,7 +12,7 @@ import branca
 
 
 if 'liste_communes' not in st.session_state:
-    st.session_state.dict_communes = pickle.load(open('./App/liste_communes_dep.p', 'rb'))
+    st.session_state.dict_communes = pickle.load(open('liste_communes_dep.p', 'rb'))
     st.session_state.liste_communes = [''] + sorted(st.session_state.dict_communes.keys())
 
 if 'map' not in st.session_state: 
@@ -53,7 +53,7 @@ else:
 
     departement = st.session_state.dict_communes[commune]
 
-    communes = pickle.load(open('App/departements/' + departement + '.p', 'rb'))
+    communes = pickle.load(open('departements/' + departement + '.p', 'rb'))
     lat = communes[communes.nom==commune].iloc[0]['lat']
     lon = communes[communes.nom==commune].iloc[0]['lon']
 
