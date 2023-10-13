@@ -6,7 +6,7 @@ import pydeck as pdk
 
 
 if 'df' not in st.session_state:
-    st.session_state.df = pickle.load(open('./App/liste_res.p', 'rb'))
+    st.session_state.df = pickle.load(open('./App/liste_res_20231002.p', 'rb'))
     st.session_state.df.index = st.session_state.df.nom
     st.session_state.liste_commune = [''] + sorted(st.session_state.df.nom.unique())
 

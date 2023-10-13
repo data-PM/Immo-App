@@ -7,29 +7,24 @@ import numpy as np
 import folium
 from folium.features import GeoJsonPopup, GeoJsonTooltip
 from streamlit_folium import st_folium
+from streamlit_extras.metric_cards import style_metric_cards
 import branca
 
-
-
-if 'liste_communes' not in st.session_state:
-    st.session_state.dict_communes = pickle.load(open('liste_communes_dep.p', 'rb'))
-    st.session_state.liste_communes = [''] + sorted(st.session_state.dict_communes.keys())
-
-if 'map' not in st.session_state: 
-    frame = folium.Figure(width=700, height=500)
-    st.session_state.map = folium.Map(location=[47.081012, 2.398782], zoom_start=6, prefer_canvas=True).add_to(frame)
-
-
+from folium import FeatureGroup, LayerControl, Map, Marker
 
 APP_ICON_URL = "logo.png"
 
 # Setup web page
 st.set_page_config(
-     page_title="Evolution des prix de l'immobilier",
-     page_icon=APP_ICON_URL,
-     layout="centered"
+    page_title="Evolution des prix de l'immobilier",
+    page_icon=APP_ICON_URL,
+    layout="centered"
 )
 
+if 'departements' not in st.session_state:
+    st.session_state.departements = pickle.load(open('App/infos_dep.p', 'rb'))
+
+# Pour enlever les espaces inutiles
 st.markdown("""
         <style>
                .block-container {
@@ -41,74 +36,146 @@ st.markdown("""
         </style>
         """, unsafe_allow_html=True)
 
-st.title("Évolution de l'immobilier à 1 an 🏡")
+st.markdown("<h1 style='text-align: center;'>💸 Prix de l'immobilier à <span style='color: #bd4937'>1 an</span> 💸</h1>", unsafe_allow_html=True)
 
 
-commune = st.selectbox(label='Choisissez votre commune', options=st.session_state.liste_communes)
+# Select département
+list_dep = [""] + list(st.session_state.departements['dep'].unique())
+dep = st.selectbox(label='Département', options=list_dep)
 
 
-with st.container():
-        
-    if commune == '':
-        st_folium(st.session_state.map, width=700, height=500)
+# Metrics
+c1, c2, c3 = st.columns([1, 1, 1])
 
-    else:
+if dep == "":
+    prix_0, prix_6, prix_12, evol_0, evol_6, evol_12 = "-", "-", "-", "", "", ""
+else:
+    prix_0 = st.session_state.departements[st.session_state.departements['dep'] == dep]['prix_figaro'].iloc[0]
+    prix_6 = st.session_state.departements[st.session_state.departements['dep'] == dep]['prix_6m'].iloc[0]
+    prix_12 = st.session_state.departements[st.session_state.departements['dep'] == dep]['prix_12m'].iloc[0]
+    evol_0 = ""
+    evol_6 = st.session_state.departements[st.session_state.departements['dep'] == dep]['EVOL_6M'].iloc[0]
+    evol_12 = st.session_state.departements[st.session_state.departements['dep'] == dep]['EVOL_12M'].iloc[0]
 
-        departement = st.session_state.dict_communes[commune]
+background_color: str = '#FFF'
+border_size_px: int = 1
+border_color: str = '#CCC'
+border_radius_px: int = 5
+border_left_color: str = '#9AD8E1'
 
-        communes = pickle.load(open('departements/' + departement + '.p', 'rb'))
-        lat = communes[communes.nom==commune].iloc[0]['lat']
-        lon = communes[communes.nom==commune].iloc[0]['lon']
+st.markdown(
+    f"""
+    <style>
+        div[data-testid="metric-container"] {{
+            background-color: {background_color};
+            border: {border_size_px}px solid {border_color};
+            padding: 5% 5% 5% 10%;
+            border-radius: {border_radius_px}px;
+            border-left: 0.5rem solid {border_left_color} !important;
+        }}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-        colormap = branca.colormap.LinearColormap(
-            vmin=-0.1,
-            vmax=0.1,
-            colors=["red", "orange", "lightblue", "green", "darkgreen"]
-        )
+c1.metric("Aujourd'hui", prix_0, evol_0)
+c2.metric("Dans 6 mois", prix_6, evol_6)
+c3.metric("Dans 1 an", prix_12, evol_12)
 
-        popup = GeoJsonPopup(
-            fields=["nom", "EVOL_3M", "EVOL_6M", "EVOL_12M"],
-            aliases=["Commune", "3 mois", "6 mois", "12 mois"],
+
+
+# Map
+if dep == "":
+
+    frame = folium.Figure(width=800, height=500)
+    map = folium.Map(tiles="openstreetmap", location=[47.081012, 2.398782], zoom_start=6, max_bounds=True).add_to(frame)
+
+    
+
+else:
+    
+    lat = st.session_state.departements[st.session_state.departements['dep'] == dep]['lat'].iloc[0]
+    lng = st.session_state.departements[st.session_state.departements['dep'] == dep]['lng'].iloc[0]
+    zoom = st.session_state.departements[st.session_state.departements['dep'] == dep]['zoom'].iloc[0]
+
+    frame = folium.Figure(width=800, height=500)
+    map = folium.Map(tiles="openstreetmap", location=[lat, lng], zoom_start=zoom).add_to(frame)
+
+    dep_light = dep[5:]
+    communes = pickle.load(open('App/departements/' + dep_light + '.p', 'rb'))
+    communes['rien'] = ""
+
+    colormap = branca.colormap.LinearColormap(
+        vmin=-0.1,
+        vmax=0.1,
+        colors=["red", "orange", "lightblue", "green", "darkgreen"]
+    )
+
+    folium.GeoJson(
+        communes,
+        style_function=lambda x: {
+            "fillColor": colormap(x["properties"]["evol_12m"])
+            if x["properties"]["evol_12m"] is not None
+            else "transparent",
+            "color": "#333333",
+            "weight": 0.1,
+            "fillOpacity": 0.3,
+            'lineColor': '#333333',
+        },
+        # tooltip=tooltip,
+        zoom_on_click=True,
+    ).add_to(map)
+
+    folium.features.GeoJson(
+        data=communes,
+        name='New Cases Past 7 days (Per 100K Population)',
+        smooth_factor=2,
+        style_function=lambda x: {'color':'black','fillColor':'transparent','weight':0.5},
+        zoom_on_click=True,
+        tooltip=folium.features.GeoJsonTooltip(
+            fields=['nom',
+                    'rien',
+                    'prix_figaro',
+                    'rien',
+                    'prix_6m',
+                    'EVOL_6M',
+                    'rien',
+                    'prix_12m',
+                    'EVOL_12M'
+                    ],
+            aliases=["Commune ",
+                     "---------------------------",
+                     "Prix du m² ",
+                     "---------------------------",
+                     "Prix dans 6 mois ",
+                     " ",
+                     "---------------------------",
+                     "Prix dans 1 an ",
+                     " ",
+                    ], 
             localize=True,
+            sticky=True,
             labels=True,
-            style="background-color: yellow;",
-        )
-
-        tooltip = GeoJsonTooltip(
-            fields=["nom", "EVOL_3M", "EVOL_6M", "EVOL_12M"],
-            aliases=["Commune", "3 mois", "6 mois", "12 mois"],
-            localize=True,
-            # sticky=False,
-            labels=True,
-            # style=("background-color: white; color: #333333; font-family: arial; font-size: 14px; padding: 10px;"),
-            style="background-color: yellow;",
-            max_width=800,
-        )
-
-        frame = folium.Figure(width=700, height=500)
-        map = folium.Map(location=[lat, lon], zoom_start=11, prefer_canvas=True).add_to(frame)
-
-        g = folium.GeoJson(
-            communes,
-            style_function=lambda x: {
-                "fillColor": colormap(x["properties"]["evol_12m"])
-                if x["properties"]["evol_12m"] is not None
-                else "transparent",
-                "color": "white",
-                "fillOpacity": 0.4,
-            },
-            tooltip=tooltip,
-            # popup=popup,
-        ).add_to(map)
-
-        colormap.add_to(map)
-
-        st_folium(map, width=700, height=500)
+            style="""
+                background-color: #F0EFEF;
+                border: 2px solid black;
+                border-radius: 3px;
+                box-shadow: 3px;
+            """,
+            max_width=800,),
+                highlight_function=lambda x: {'weight':3,'fillColor':'grey'},
+            ).add_to(map)
 
 
+    colormap.add_to(map)
 
-    st.markdown('''
-        <p><center><span style="font-size:16px">Powered by</span> <span style="font-size:20px"><strong><a href="https://dataltist.fr/" style="color:#C00000; text-decoration: none">Dataltist</a></strong></span>
-        <div class="col-xs-12 col-lg-4 text-center text-sm-left"><div class="widget-theme-wrapper widget_no_background "><div id="mwt_logo_about-2" class="widget widget_logo_about"><div class="logo logo_image_only">
-        <img src="//dataltist.fr/wp-content/uploads/2019/05/Logo-1.png" width="150" alt=""></center></p>
-    ''', unsafe_allow_html=True)
+    
+st_folium(map, width=800, height=500)
+
+
+# Dataltist
+st.markdown('''
+    <p><center><span style="font-size:16px">created by</span> <a href="https://dataltist.fr/" style="color:#C00000; text-decoration: none">
+    <div class="col-xs-12 col-lg-4 text-center text-sm-left"><div class="widget-theme-wrapper widget_no_background "><div id="mwt_logo_about-2" class="widget widget_logo_about"><div class="logo logo_image_only">
+    <img src="https://dataltist.fr/wp-content/uploads/2023/09/Logo-light-dataltist-Forsides.png" width="150" alt=""></a></span></center></p>
+''', unsafe_allow_html=True)
