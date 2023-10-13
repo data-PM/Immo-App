@@ -22,7 +22,7 @@ st.set_page_config(
 )
 
 if 'departements' not in st.session_state:
-    st.session_state.departements = pickle.load(open('App/infos_dep.p', 'rb'))
+    st.session_state.departements = pickle.load(open('infos_dep.p', 'rb'))
 
 # Pour enlever les espaces inutiles
 st.markdown("""
@@ -102,7 +102,7 @@ else:
     map = folium.Map(tiles="openstreetmap", location=[lat, lng], zoom_start=zoom).add_to(frame)
 
     dep_light = dep[5:]
-    communes = pickle.load(open('App/departements/' + dep_light + '.p', 'rb'))
+    communes = pickle.load(open('departements/' + dep_light + '.p', 'rb'))
     communes['rien'] = ""
 
     colormap = branca.colormap.LinearColormap(
