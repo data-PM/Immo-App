@@ -9,6 +9,9 @@ from folium.features import GeoJsonPopup, GeoJsonTooltip
 from streamlit_folium import st_folium
 from streamlit_extras.metric_cards import style_metric_cards
 import branca
+from streamlit_js_eval import streamlit_js_eval
+
+
 
 from folium import FeatureGroup, LayerControl, Map, Marker
 
@@ -20,7 +23,7 @@ st.set_page_config(
     page_icon=APP_ICON_URL,
     layout="centered"
 )
-
+st.write(f"Screen width is {streamlit_js_eval(js_expressions='screen.width', key = 'SCR')}")
 if 'departements' not in st.session_state:
     st.session_state.departements = pickle.load(open('infos_dep.p', 'rb'))
 
@@ -87,10 +90,10 @@ c3.metric("Dans 1 an", prix_12, evol_12)
 # Map
 if dep == "":
 
-    frame = folium.Figure(width=800, height=500)
+    frame = folium.Figure(width=700, height=500)
     map = folium.Map(tiles="openstreetmap", location=[47.081012, 2.398782], zoom_start=6, max_bounds=True).add_to(frame)
 
-    
+
 
 else:
     
@@ -98,7 +101,7 @@ else:
     lng = st.session_state.departements[st.session_state.departements['dep'] == dep]['lng'].iloc[0]
     zoom = st.session_state.departements[st.session_state.departements['dep'] == dep]['zoom'].iloc[0]
 
-    frame = folium.Figure(width=800, height=500)
+    frame = folium.Figure(width=700, height=500)
     map = folium.Map(tiles="openstreetmap", location=[lat, lng], zoom_start=zoom).add_to(frame)
 
     dep_light = dep[5:]
@@ -162,7 +165,7 @@ else:
                 border-radius: 3px;
                 box-shadow: 3px;
             """,
-            max_width=800,),
+            max_width=700,),
                 highlight_function=lambda x: {'weight':3,'fillColor':'grey'},
             ).add_to(map)
 
@@ -170,7 +173,7 @@ else:
     colormap.add_to(map)
 
     
-st_folium(map, width=800, height=500)
+st_folium(map, width=700, height=500)
 
 
 # Dataltist
